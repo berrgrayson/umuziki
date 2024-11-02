@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:frontend/components/neu_box.dart';
 import 'package:frontend/models/playlist_provider.dart';
@@ -11,7 +13,6 @@ class SongPage extends StatelessWidget {
     String twoDigitSeconds =
         duration.inSeconds.remainder(60).toString().padLeft(2, '0');
     String formattedTime = "${duration.inMinutes}:$twoDigitSeconds";
-
     return formattedTime;
   }
 
@@ -22,10 +23,19 @@ class SongPage extends StatelessWidget {
         // get playlist
         final playlist = value.playlist;
 
-        // get current song index
+        // Check if playlist is empty or index is invalid
+        if (playlist.isEmpty || value.currentSongIndex == null) {
+          return Scaffold(
+            backgroundColor: Theme.of(context).colorScheme.surface,
+            body: const Center(
+              child: Text("No songs found. Add some music to your device!"),
+            ),
+          );
+        }
+
+        // get current song
         final currentSong = playlist[value.currentSongIndex ?? 0];
 
-        // return Scaffold UI
         return Scaffold(
           backgroundColor: Theme.of(context).colorScheme.surface,
           body: SingleChildScrollView(
@@ -39,16 +49,11 @@ class SongPage extends StatelessWidget {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        // back button
                         IconButton(
                           onPressed: () => Navigator.pop(context),
                           icon: const Icon(Icons.arrow_back),
                         ),
-
-                        // title
                         const Text("P L A Y L I S T"),
-
-                        // menu button
                         IconButton(
                           onPressed: () {},
                           icon: const Icon(Icons.menu),
@@ -62,10 +67,20 @@ class SongPage extends StatelessWidget {
                     NeuBox(
                       child: Column(
                         children: [
-                          // image
+                          // image with fallback
                           ClipRRect(
                             borderRadius: BorderRadius.circular(8),
-                            child: Image.asset(currentSong.albumArtImagePath),
+                            child: currentSong.albumArtImagePath != null
+                                ? Image.file(
+                                    File(currentSong.albumArtImagePath!),
+                                    width: 300,
+                                    height: 300,
+                                    fit: BoxFit.cover,
+                                    errorBuilder:
+                                        (context, error, stackTrace) =>
+                                            _buildPlaceholderArt(),
+                                  )
+                                : _buildPlaceholderArt(),
                           ),
 
                           // song and artist name and icon
@@ -74,18 +89,26 @@ class SongPage extends StatelessWidget {
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                // song and artist name
-                                Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      currentSong.songName,
-                                      style: const TextStyle(
+                                // song and artist name with ellipsis for long text
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        currentSong.songName,
+                                        style: const TextStyle(
                                           fontWeight: FontWeight.bold,
-                                          fontSize: 20),
-                                    ),
-                                    Text(currentSong.artistName),
-                                  ],
+                                          fontSize: 20,
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                      Text(
+                                        currentSong.artistName,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ],
+                                  ),
                                 ),
 
                                 // heart icon
@@ -110,22 +133,13 @@ class SongPage extends StatelessWidget {
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              // start time
                               Text(formatTime(value.currentDuration)),
-
-                              // shuffle icon
                               const Icon(Icons.shuffle),
-
-                              // repeat icon
                               const Icon(Icons.repeat),
-
-                              // end time
                               Text(formatTime(value.totalDuration)),
                             ],
                           ),
                         ),
-
-                        // song duration progress
                         SliderTheme(
                           data: SliderTheme.of(context).copyWith(
                             thumbShape: const RoundSliderThumbShape(
@@ -140,7 +154,6 @@ class SongPage extends StatelessWidget {
                               // during when the user is sliding around
                             },
                             onChangeEnd: (double double) {
-                              // sliding has finished, go to that position in song duration
                               value.seek(Duration(seconds: double.toInt()));
                             },
                           ),
@@ -153,7 +166,6 @@ class SongPage extends StatelessWidget {
                     // playback controls
                     Row(
                       children: [
-                        // skip previous
                         Expanded(
                           child: GestureDetector(
                             onTap: value.playPreviousSong,
@@ -162,10 +174,7 @@ class SongPage extends StatelessWidget {
                             ),
                           ),
                         ),
-
                         const SizedBox(width: 20),
-
-                        // play pause
                         Expanded(
                           flex: 2,
                           child: GestureDetector(
@@ -177,10 +186,7 @@ class SongPage extends StatelessWidget {
                             ),
                           ),
                         ),
-
                         const SizedBox(width: 20),
-
-                        // skip forward
                         Expanded(
                           child: GestureDetector(
                             onTap: value.playNextSong,
@@ -198,6 +204,28 @@ class SongPage extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+
+  Widget _buildPlaceholderArt() {
+    return Container(
+      width: 300,
+      height: 300,
+      color: Colors.grey[300],
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: const [
+          Icon(
+            Icons.music_note,
+            size: 80,
+            color: Colors.grey,
+          ),
+          Text(
+            'No Album Art',
+            style: TextStyle(color: Colors.grey),
+          ),
+        ],
+      ),
     );
   }
 }
