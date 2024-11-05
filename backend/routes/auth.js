@@ -44,7 +44,7 @@ router.post("/register", async (req, res) => {
     await user.save();
 
     // Send verification email
-    const verificationLink = `http://your-vps-ip:2024/api/auth/verify/${verificationToken}`;
+    const verificationLink = `http://172.105.244.189:2024/api/auth/verify/${verificationToken}`;
     await transporter.sendMail({
       from: process.env.EMAIL_USER,
       to: email,
