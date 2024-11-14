@@ -13,10 +13,9 @@ class MyDrawer extends StatelessWidget {
           // logo
           DrawerHeader(
             child: Center(
-              child: Icon(
-                Icons.music_note,
-                size: 40,
-                color: Theme.of(context).colorScheme.inversePrimary,
+              child: Image.asset(
+                'lib/images/logo.png',
+                height: 70,
               ),
             ),
           ),

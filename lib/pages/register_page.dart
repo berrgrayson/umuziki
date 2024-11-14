@@ -16,9 +16,7 @@ class RegisterPage extends StatefulWidget {
 class _RegisterPageState extends State<RegisterPage> {
   // text editing controllers
   final emailController = TextEditingController();
-
   final passwordController = TextEditingController();
-
   final confirmPasswordController = TextEditingController();
 
   // sign user up method
@@ -37,16 +35,25 @@ class _RegisterPageState extends State<RegisterPage> {
     try {
       // check if password is confirmed
       if (passwordController.text == confirmPasswordController.text) {
-        await FirebaseAuth.instance.createUserWithEmailAndPassword(
+        // create user
+        UserCredential userCredential =
+            await FirebaseAuth.instance.createUserWithEmailAndPassword(
           email: emailController.text,
           password: passwordController.text,
         );
+
+        // send email verification
+        await userCredential.user!.sendEmailVerification();
+
+        // pop the loading circle
+        Navigator.pop(context);
+
+        // show success message
+        showSuccessMessage("Verification email sent! Please check your inbox.");
       } else {
         // show error message, passwords don't match
         showErrorMessage("Passwords don't match!");
       }
-      // pop the loading circle
-      Navigator.pop(context);
     } on FirebaseAuthException catch (e) {
       // pop the loading circle
       Navigator.pop(context);
@@ -57,6 +64,24 @@ class _RegisterPageState extends State<RegisterPage> {
 
   // error message to user
   void showErrorMessage(String message) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          backgroundColor: Colors.deepPurple,
+          title: Center(
+            child: Text(
+              message,
+              style: const TextStyle(color: Colors.white),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  // success message to user
+  void showSuccessMessage(String message) {
     showDialog(
       context: context,
       builder: (context) {

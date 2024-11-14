@@ -1,6 +1,7 @@
 import 'package:authentification/components/my_button.dart';
 import 'package:authentification/components/my_textfield.dart';
 import 'package:authentification/components/square_tile.dart';
+import 'package:authentification/pages/home_page.dart';
 import 'package:authentification/services/auth_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -31,14 +32,20 @@ class _LoginPageState extends State<LoginPage> {
       },
     );
 
-    // try sign in
     try {
       await FirebaseAuth.instance.signInWithEmailAndPassword(
         email: emailController.text,
         password: passwordController.text,
       );
+
       // pop the loading circle
       Navigator.pop(context);
+
+      // Navigate to HomePage
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const HomePage()),
+      );
     } on FirebaseAuthException catch (e) {
       // pop the loading circle
       Navigator.pop(context);
