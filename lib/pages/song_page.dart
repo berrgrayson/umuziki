@@ -111,10 +111,10 @@ class SongPage extends StatelessWidget {
                                   ),
                                 ),
 
-                                // heart icon
+                                // An icon for fun
                                 const Icon(
-                                  Icons.favorite,
-                                  color: Colors.red,
+                                  Icons.stars,
+                                  color: Colors.orangeAccent,
                                 )
                               ],
                             ),
@@ -149,7 +149,7 @@ class SongPage extends StatelessWidget {
                             min: 0,
                             max: value.totalDuration.inSeconds.toDouble(),
                             value: value.currentDuration.inSeconds.toDouble(),
-                            activeColor: Colors.green,
+                            activeColor: Colors.deepOrangeAccent,
                             onChanged: (double double) {
                               // during when the user is sliding around
                             },

@@ -1,5 +1,5 @@
-// home
 import 'package:authentification/components/my_drawer.dart';
+import 'package:authentification/components/mini_player.dart';
 import 'package:authentification/models/playlist_provider.dart';
 import 'package:authentification/pages/song_page.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -93,95 +93,124 @@ class _HomePageState extends State<HomePage> {
         ],
       ),
       drawer: const MyDrawer(),
-      body: Consumer<PlaylistProvider>(
-        builder: (context, value, child) {
-          if (isLoading) {
-            return const Center(
-              child: CircularProgressIndicator(),
-            );
-          }
+      body: Column(
+        children: [
+          Expanded(
+            child: Consumer<PlaylistProvider>(
+              builder: (context, value, child) {
+                if (isLoading) {
+                  return const Center(
+                    child: CircularProgressIndicator(),
+                  );
+                }
 
-          final List<Song> playlist = value.playlist;
+                final List<Song> playlist = value.playlist;
 
-          if (playlist.isEmpty) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(
-                    Icons.music_off,
-                    size: 64,
-                    color: Colors.grey,
-                  ),
-                  const SizedBox(height: 16),
-                  const Text(
-                    'No music files found',
-                    style: TextStyle(fontSize: 18),
-                  ),
-                  const SizedBox(height: 8),
-                  ElevatedButton.icon(
-                    onPressed: _initializeMusic,
-                    icon: const Icon(Icons.refresh),
-                    label: const Text('Scan for Music'),
-                  ),
-                ],
-              ),
-            );
-          }
-
-          return ListView.builder(
-            itemCount: playlist.length,
-            itemBuilder: (context, index) {
-              final Song song = playlist[index];
-
-              return ListTile(
-                title: Text(
-                  song.songName,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                subtitle: Text(
-                  song.artistName,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                leading: _buildAlbumArt(song),
-                onTap: () => goToSong(index),
-                trailing: PopupMenuButton(
-                  itemBuilder: (context) => [
-                    const PopupMenuItem(
-                      value: 'play',
-                      child: Row(
-                        children: [
-                          Icon(Icons.play_arrow),
-                          SizedBox(width: 8),
-                          Text('Play'),
-                        ],
-                      ),
+                if (playlist.isEmpty) {
+                  return Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(
+                          Icons.music_off,
+                          size: 64,
+                          color: Colors.grey,
+                        ),
+                        const SizedBox(height: 16),
+                        const Text(
+                          'No music files found',
+                          style: TextStyle(fontSize: 18),
+                        ),
+                        const SizedBox(height: 8),
+                        ElevatedButton.icon(
+                          onPressed: _initializeMusic,
+                          icon: const Icon(Icons.refresh),
+                          label: const Text('Scan for Music'),
+                        ),
+                      ],
                     ),
-                    const PopupMenuItem(
-                      value: 'details',
-                      child: Row(
-                        children: [
-                          Icon(Icons.info),
-                          SizedBox(width: 8),
-                          Text('Details'),
-                        ],
+                  );
+                }
+
+                return ListView.builder(
+                  itemCount: playlist.length,
+                  itemBuilder: (context, index) {
+                    final Song song = playlist[index];
+
+                    return ListTile(
+                      title: Text(
+                        song.songName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                    ),
-                  ],
-                  onSelected: (value) {
-                    if (value == 'play') {
-                      goToSong(index);
-                    } else if (value == 'details') {
-                      _showSongDetails(context, song);
-                    }
+                      subtitle: Text(
+                        song.artistName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      leading: _buildAlbumArt(song),
+                      onTap: () => goToSong(index),
+                      trailing: PopupMenuButton(
+                        itemBuilder: (context) => [
+                          const PopupMenuItem(
+                            value: 'play',
+                            child: Row(
+                              children: [
+                                Icon(Icons.play_arrow),
+                                SizedBox(width: 8),
+                                Text('Play'),
+                              ],
+                            ),
+                          ),
+                          const PopupMenuItem(
+                            value: 'details',
+                            child: Row(
+                              children: [
+                                Icon(Icons.info),
+                                SizedBox(width: 8),
+                                Text('Details'),
+                              ],
+                            ),
+                          ),
+                        ],
+                        onSelected: (value) {
+                          if (value == 'play') {
+                            goToSong(index);
+                          } else if (value == 'details') {
+                            _showSongDetails(context, song);
+                          }
+                        },
+                      ),
+                    );
                   },
-                ),
-              );
+                );
+              },
+            ),
+          ),
+          Consumer<PlaylistProvider>(
+            builder: (context, value, child) {
+              final currentSong = value.currentSong;
+              if (currentSong != null) {
+                return MiniPlayer(
+                  song: currentSong,
+                  isPlaying: value.isPlaying,
+                  onPlayPausePressed: value.pauseOrResume,
+                  onNextPressed: value.playNextSong,
+                  onPreviousPressed: value.playPreviousSong,
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const SongPage(),
+                      ),
+                    );
+                  },
+                );
+              }
+              return const SizedBox.shrink();
             },
-          );
-        },
+          ),
+        ],
       ),
     );
   }

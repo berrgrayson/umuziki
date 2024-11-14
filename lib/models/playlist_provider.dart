@@ -101,7 +101,6 @@ class PlaylistProvider extends ChangeNotifier {
     }
   }
 
-  // Rest of your methods remain the same
   void play() async {
     if (currentSongIndex == null || _playlist.isEmpty) return;
 
@@ -180,6 +179,9 @@ class PlaylistProvider extends ChangeNotifier {
   bool get isPlaying => _isPlaying;
   Duration get currentDuration => _currentDuration;
   Duration get totalDuration => _totalDuration;
+  Song? get currentSong => _currentSongIndex != null && _playlist.isNotEmpty
+      ? _playlist[_currentSongIndex!]
+      : null;
 
   set currentSongIndex(int? newIndex) {
     _currentSongIndex = newIndex;
