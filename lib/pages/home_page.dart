@@ -1,7 +1,9 @@
+// home
+import 'package:authentification/components/my_drawer.dart';
+import 'package:authentification/models/playlist_provider.dart';
+import 'package:authentification/pages/song_page.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:frontend/components/my_drawer.dart';
-import 'package:frontend/models/playlist_provider.dart';
-import 'package:frontend/pages/song_page.dart';
 import 'package:provider/provider.dart';
 import 'dart:io';
 
@@ -13,8 +15,14 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
+  final user = FirebaseAuth.instance.currentUser!;
   late final PlaylistProvider playlistProvider;
   bool isLoading = true;
+
+  // sign user out method
+  void signUserOut() {
+    FirebaseAuth.instance.signOut();
+  }
 
   @override
   void initState() {

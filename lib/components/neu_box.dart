@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:frontend/theme/theme_provider.dart';
+import 'package:authentification/theme/theme_provider.dart';
 import 'package:provider/provider.dart';
 
 class NeuBox extends StatelessWidget {

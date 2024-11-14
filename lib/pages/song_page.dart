@@ -1,8 +1,8 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:frontend/components/neu_box.dart';
-import 'package:frontend/models/playlist_provider.dart';
+import 'package:authentification/components/neu_box.dart';
+import 'package:authentification/models/playlist_provider.dart';
 import 'package:provider/provider.dart';
 
 class SongPage extends StatelessWidget {
@@ -209,12 +209,12 @@ class SongPage extends StatelessWidget {
 
   Widget _buildPlaceholderArt() {
     return Container(
-      width: 300,
-      height: 300,
+      width: 250,
+      height: 250,
       color: Colors.grey[300],
-      child: Column(
+      child: const Column(
         mainAxisAlignment: MainAxisAlignment.center,
-        children: const [
+        children: [
           Icon(
             Icons.music_note,
             size: 80,

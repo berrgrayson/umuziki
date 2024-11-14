@@ -1,12 +1,17 @@
+// main.dart (authentification app)
+import 'package:authentification/pages/auth_page.dart';
+import 'package:authentification/models/playlist_provider.dart';
+import 'package:authentification/theme/theme_provider.dart';
 import 'package:flutter/material.dart';
-import 'package:frontend/models/playlist_provider.dart';
-import 'package:frontend/pages/home_page.dart';
-import 'package:frontend/theme/theme_provider.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart';
 import 'package:provider/provider.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
   runApp(
     MultiProvider(
       providers: [
@@ -25,7 +30,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      home: const HomePage(),
+      home: const AuthPage(),
       theme: Provider.of<ThemeProvider>(context).themeData,
     );
   }

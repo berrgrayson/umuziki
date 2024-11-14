@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:frontend/pages/settings_page.dart';
+import 'package:authentification/pages/settings_page.dart';
 
 class MyDrawer extends StatelessWidget {
   const MyDrawer({super.key});
@@ -20,6 +20,7 @@ class MyDrawer extends StatelessWidget {
               ),
             ),
           ),
+
           // home tile
           Padding(
             padding: const EdgeInsets.only(left: 25.0, top: 25.0),
@@ -44,7 +45,7 @@ class MyDrawer extends StatelessWidget {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => SettingsPage(),
+                    builder: (context) => const SettingsPage(),
                   ),
                 );
               },
