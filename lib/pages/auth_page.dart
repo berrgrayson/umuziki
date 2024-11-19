@@ -13,24 +13,18 @@ class AuthPage extends StatelessWidget {
       body: StreamBuilder<User?>(
         stream: FirebaseAuth.instance.authStateChanges(),
         builder: (context, snapshot) {
-          // Check if user exists
-          if (snapshot.hasData) {
-            // Force refresh user data to get latest email verification status
-            return FutureBuilder<User?>(
-              future: FirebaseAuth.instance.currentUser?.reload().then(
-                    (_) => FirebaseAuth.instance.currentUser,
-                  ),
-              builder: (context, userSnapshot) {
-                if (userSnapshot.hasData && userSnapshot.data!.emailVerified) {
-                  return const HomePage();
-                } else {
-                  return const VerificationPage();
-                }
-              },
-            );
+          // user is logged in and verified
+          if (snapshot.hasData && snapshot.data!.emailVerified) {
+            return const HomePage();
+          }
+          // user is logged in but not verified
+          else if (snapshot.hasData && !snapshot.data!.emailVerified) {
+            return const VerificationPage();
           }
           // user is NOT logged in
-          return const LoginOrRegisterPage();
+          else {
+            return const LoginOrRegisterPage();
+          }
         },
       ),
     );
