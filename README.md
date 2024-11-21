@@ -13,7 +13,10 @@
   - Play, pause, skip, and rewind music tracks seamlessly.  
 
 - **Playlist Management**  
-  - Create, edit, and organize your favorite tracks into playlists.  
+  - Create, edit, and organize your favorite tracks into playlists.
+  
+- **Search Functionality**  
+  - Quickly find music with any text related in your local library.  
 
 ---
 

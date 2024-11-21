@@ -1,5 +1,6 @@
 import 'package:authentification/components/my_drawer.dart';
 import 'package:authentification/models/playlist_provider.dart';
+import 'package:authentification/pages/song_page.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -80,12 +81,21 @@ class _PlaylistPageState extends State<PlaylistPage> {
     );
   }
 
+  void _navigateToPlaylistSongs(Playlist playlist) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => PlaylistSongsPage(playlist: playlist),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.surface,
       appBar: AppBar(
-        title: const Text('Playlists'),
+        title: const Text('Saved Playlists'),
         actions: [
           IconButton(
             icon: const Icon(Icons.add),
@@ -123,11 +133,73 @@ class _PlaylistPageState extends State<PlaylistPage> {
                     ),
                   ],
                 ),
-                onTap: () {
-                  // Navigate to the playlist's song list
-                },
+                onTap: () => _navigateToPlaylistSongs(playlist),
               );
             },
+          );
+        },
+      ),
+    );
+  }
+}
+
+class PlaylistSongsPage extends StatelessWidget {
+  final Playlist playlist;
+
+  const PlaylistSongsPage({super.key, required this.playlist});
+
+  void _playSongFromPlaylist(
+      BuildContext context, Song song, List<Song> playlistSongs) {
+    final playlistProvider =
+        Provider.of<PlaylistProvider>(context, listen: false);
+
+    // Update the main playlist and current song index
+    // playlistProvider.playlist = playlistSongs;
+    playlistProvider.currentSongIndex = playlistSongs.indexOf(song);
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const SongPage(),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(playlist.name),
+      ),
+      body: ListView.builder(
+        itemCount: playlist.songs.length,
+        itemBuilder: (context, index) {
+          final song = playlist.songs[index];
+          return ListTile(
+            title: Text(song.songName),
+            subtitle: Text(song.artistName),
+            onTap: () => _playSongFromPlaylist(context, song, playlist.songs),
+            trailing: PopupMenuButton(
+              itemBuilder: (context) => [
+                const PopupMenuItem(
+                  value: 'remove',
+                  child: Row(
+                    children: [
+                      Icon(Icons.delete),
+                      SizedBox(width: 8),
+                      Text('Remove from Playlist'),
+                    ],
+                  ),
+                ),
+              ],
+              onSelected: (value) {
+                if (value == 'remove') {
+                  final provider =
+                      Provider.of<PlaylistProvider>(context, listen: false);
+                  provider.removeSongFromPlaylist(playlist, song);
+                }
+              },
+            ),
           );
         },
       ),

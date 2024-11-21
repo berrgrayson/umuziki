@@ -26,22 +26,28 @@ class SongPage extends StatelessWidget {
             final playlists = provider.playlists;
             final currentSong = provider.currentSong;
             if (currentSong == null) return const SizedBox.shrink();
-            return Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                for (final playlist in playlists)
-                  CheckboxListTile(
-                    title: Text(playlist.name),
-                    value: playlist.songs.contains(currentSong),
-                    onChanged: (value) {
-                      if (value!) {
-                        provider.addSongToPlaylist(playlist, currentSong);
-                      } else {
-                        provider.removeSongFromPlaylist(playlist, currentSong);
-                      }
-                    },
-                  ),
-              ],
+            return ConstrainedBox(
+              constraints: BoxConstraints(maxHeight: 300),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    for (final playlist in playlists)
+                      CheckboxListTile(
+                        title: Text(playlist.name),
+                        value: playlist.songs.contains(currentSong),
+                        onChanged: (value) {
+                          if (value!) {
+                            provider.addSongToPlaylist(playlist, currentSong);
+                          } else {
+                            provider.removeSongFromPlaylist(
+                                playlist, currentSong);
+                          }
+                        },
+                      ),
+                  ],
+                ),
+              ),
             );
           },
         ),
@@ -88,6 +94,15 @@ class SongPage extends StatelessWidget {
                     currentSong,
                   );
                   Navigator.pop(context);
+
+                  // Show a snackbar to confirm playlist creation
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                          'Playlist "$newPlaylistName" created successfully'),
+                      duration: const Duration(seconds: 2),
+                    ),
+                  );
                 }
               },
               child: const Text('Create'),
@@ -95,6 +110,28 @@ class SongPage extends StatelessWidget {
           ],
         );
       },
+    );
+  }
+
+  Widget _buildPlaceholderArt() {
+    return Container(
+      width: 250,
+      height: 250,
+      color: Colors.grey[300],
+      child: const Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.music_note,
+            size: 80,
+            color: Colors.grey,
+          ),
+          Text(
+            'No Album Art',
+            style: TextStyle(color: Colors.grey),
+          ),
+        ],
+      ),
     );
   }
 
@@ -120,216 +157,247 @@ class SongPage extends StatelessWidget {
 
         return Scaffold(
           backgroundColor: Theme.of(context).colorScheme.surface,
-          body: SingleChildScrollView(
-            child: SafeArea(
-              child: Padding(
-                padding: const EdgeInsets.only(left: 25, right: 25, bottom: 25),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    // app bar
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        IconButton(
-                          onPressed: () => Navigator.pop(context),
-                          icon: const Icon(Icons.arrow_back),
-                        ),
-                        const Text("P L A Y L I S T"),
-                        IconButton(
-                          onPressed: () {},
-                          icon: const Icon(Icons.menu),
-                        ),
-                      ],
-                    ),
-
-                    const SizedBox(height: 25),
-
-                    // album artwork
-                    NeuBox(
-                      child: Column(
-                        children: [
-                          // image with fallback
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(8),
-                            child: currentSong.albumArtImagePath != null
-                                ? Image.file(
-                                    File(currentSong.albumArtImagePath!),
-                                    width: 300,
-                                    height: 300,
-                                    fit: BoxFit.cover,
-                                    errorBuilder:
-                                        (context, error, stackTrace) =>
-                                            _buildPlaceholderArt(),
-                                  )
-                                : _buildPlaceholderArt(),
-                          ),
-
-                          // song and artist name and icon
-                          Padding(
-                            padding: const EdgeInsets.all(15.0),
-                            child: Row(
+          body: SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 25),
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  return SingleChildScrollView(
+                    child: ConstrainedBox(
+                      constraints:
+                          BoxConstraints(minHeight: constraints.maxHeight),
+                      child: IntrinsicHeight(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            // app bar
+                            Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                // song and artist name with ellipsis for long text
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
+                                IconButton(
+                                  onPressed: () => Navigator.pop(context),
+                                  icon: const Icon(Icons.arrow_back),
+                                ),
+                                const Text("P L A Y L I S T"),
+                                IconButton(
+                                  onPressed: () {},
+                                  icon: const Icon(Icons.menu),
+                                ),
+                              ],
+                            ),
+
+                            // album artwork with improved interaction
+                            GestureDetector(
+                              onDoubleTap: () =>
+                                  _showAddToPlaylistDialog(context),
+                              child: NeuBox(
+                                child: Column(
+                                  children: [
+                                    // image with fallback
+                                    ClipRRect(
+                                      borderRadius: BorderRadius.circular(8),
+                                      child:
+                                          currentSong.albumArtImagePath != null
+                                              ? Image.file(
+                                                  File(currentSong
+                                                      .albumArtImagePath!),
+                                                  width: 300,
+                                                  height: 300,
+                                                  fit: BoxFit.cover,
+                                                  errorBuilder: (context, error,
+                                                          stackTrace) =>
+                                                      _buildPlaceholderArt(),
+                                                )
+                                              : _buildPlaceholderArt(),
+                                    ),
+
+                                    // song and artist name and icon
+                                    Padding(
+                                      padding: const EdgeInsets.all(15.0),
+                                      child: Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          // song and artist name with ellipsis for long text
+                                          Expanded(
+                                            child: Column(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+                                              children: [
+                                                Text(
+                                                  currentSong.songName,
+                                                  style: const TextStyle(
+                                                    fontWeight: FontWeight.bold,
+                                                    fontSize: 20,
+                                                  ),
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
+                                                ),
+                                                Text(
+                                                  currentSong.artistName,
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+
+                                          // Playlist actions with more intuitive icons
+                                          Row(
+                                            children: [
+                                              IconButton(
+                                                tooltip:
+                                                    'Add to Existing Playlist',
+                                                onPressed: () =>
+                                                    _showAddToPlaylistDialog(
+                                                        context),
+                                                icon: const Icon(Icons
+                                                    .playlist_add_check_rounded),
+                                                color: Colors.green,
+                                              ),
+                                              IconButton(
+                                                tooltip: 'Create New Playlist',
+                                                onPressed: () =>
+                                                    _showCreatePlaylistDialog(
+                                                        context),
+                                                icon: const Icon(Icons
+                                                    .create_new_folder_outlined),
+                                                color: Colors.green.shade500,
+                                              ),
+                                            ],
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+
+                            // Enhanced Slider with Time Display
+                            Column(
+                              children: [
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 16.0),
+                                  child: Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
                                     children: [
                                       Text(
-                                        currentSong.songName,
-                                        style: const TextStyle(
+                                        formatTime(value.currentDuration),
+                                        style: TextStyle(
                                           fontWeight: FontWeight.bold,
-                                          fontSize: 20,
+                                          color: Theme.of(context)
+                                              .textTheme
+                                              .bodyMedium
+                                              ?.color
+                                              ?.withOpacity(0.7),
                                         ),
-                                        overflow: TextOverflow.ellipsis,
                                       ),
                                       Text(
-                                        currentSong.artistName,
-                                        overflow: TextOverflow.ellipsis,
+                                        formatTime(value.totalDuration),
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          color: Theme.of(context)
+                                              .textTheme
+                                              .bodyMedium
+                                              ?.color
+                                              ?.withOpacity(0.7),
+                                        ),
                                       ),
                                     ],
                                   ),
                                 ),
-
-                                // Add to Playlist and Create Playlist icons
-                                Row(
-                                  children: [
-                                    IconButton(
-                                      onPressed: () =>
-                                          _showAddToPlaylistDialog(context),
-                                      icon: const Icon(Icons.save_rounded),
-                                      color: Colors.green,
-                                    ),
-                                    IconButton(
-                                      onPressed: () =>
-                                          _showCreatePlaylistDialog(context),
-                                      icon: const Icon(Icons.playlist_add),
-                                      color: Colors.green.shade500,
-                                    ),
-                                  ],
+                                SliderTheme(
+                                  data: SliderThemeData(
+                                    trackHeight: 5,
+                                    thumbShape: const RoundSliderThumbShape(
+                                        enabledThumbRadius: 8),
+                                    overlayShape: const RoundSliderOverlayShape(
+                                        overlayRadius: 15),
+                                    activeTrackColor: Colors.deepOrange,
+                                    inactiveTrackColor:
+                                        Colors.deepOrange.shade100,
+                                    thumbColor: Colors.deepOrangeAccent,
+                                  ),
+                                  child: Slider(
+                                    min: 0,
+                                    max: value.totalDuration.inSeconds
+                                        .toDouble(),
+                                    value: value.currentDuration.inSeconds
+                                        .toDouble(),
+                                    onChanged: (double position) {
+                                      value.seek(
+                                          Duration(seconds: position.toInt()));
+                                    },
+                                  ),
                                 ),
                               ],
                             ),
-                          ),
-                        ],
+
+                            // Playback Controls with Improved Interaction
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Expanded(
+                                  child: GestureDetector(
+                                    onTap: value.playPreviousSong,
+                                    child: NeuBox(
+                                      child: Icon(
+                                        Icons.skip_previous_rounded,
+                                        color:
+                                            Theme.of(context).iconTheme.color,
+                                        size: 30,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 20),
+                                Expanded(
+                                  flex: 2,
+                                  child: GestureDetector(
+                                    onTap: value.pauseOrResume,
+                                    child: NeuBox(
+                                      child: Icon(
+                                        value.isPlaying
+                                            ? Icons.pause_rounded
+                                            : Icons.play_arrow_rounded,
+                                        color:
+                                            Theme.of(context).iconTheme.color,
+                                        size: 50,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 20),
+                                Expanded(
+                                  child: GestureDetector(
+                                    onTap: value.playNextSong,
+                                    child: NeuBox(
+                                      child: Icon(
+                                        Icons.skip_next_rounded,
+                                        color:
+                                            Theme.of(context).iconTheme.color,
+                                        size: 30,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 20),
+                          ],
+                        ),
                       ),
                     ),
-
-                    const SizedBox(height: 10),
-
-                    // song duration progress
-                    Column(
-                      children: [
-                        Padding(
-                          padding: const EdgeInsets.all(25.0),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(formatTime(value.currentDuration)),
-                              const Icon(
-                                Icons.multitrack_audio_sharp,
-                                color: Colors.cyan,
-                              ),
-                              const Icon(
-                                Icons.sports_basketball,
-                                color: Colors.cyan,
-                              ),
-                              const Icon(
-                                Icons.multitrack_audio_sharp,
-                                color: Colors.cyan,
-                              ),
-                              Text(formatTime(value.totalDuration)),
-                            ],
-                          ),
-                        ),
-                        SliderTheme(
-                          data: SliderTheme.of(context).copyWith(
-                            thumbShape: const RoundSliderThumbShape(
-                                enabledThumbRadius: 0),
-                          ),
-                          child: Slider(
-                            min: 0,
-                            max: value.totalDuration.inSeconds.toDouble(),
-                            value: value.currentDuration.inSeconds.toDouble(),
-                            activeColor: Colors.deepOrangeAccent,
-                            onChanged: (double double) {
-                              // during when the user is sliding around
-                            },
-                            onChangeEnd: (double double) {
-                              value.seek(Duration(seconds: double.toInt()));
-                            },
-                          ),
-                        ),
-
-                        const SizedBox(height: 25),
-
-                        // playback controls
-                        Row(
-                          children: [
-                            Expanded(
-                              child: GestureDetector(
-                                onTap: value.playPreviousSong,
-                                child: const NeuBox(
-                                  child: Icon(Icons.skip_previous),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 20),
-                            Expanded(
-                              flex: 2,
-                              child: GestureDetector(
-                                onTap: value.pauseOrResume,
-                                child: NeuBox(
-                                  child: Icon(value.isPlaying
-                                      ? Icons.pause
-                                      : Icons.play_arrow),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 20),
-                            Expanded(
-                              child: GestureDetector(
-                                onTap: value.playNextSong,
-                                child: const NeuBox(
-                                  child: Icon(Icons.skip_next),
-                                ),
-                              ),
-                            ),
-                          ],
-                        )
-                      ],
-                    ),
-                  ],
-                ),
+                  );
+                },
               ),
             ),
           ),
         );
       },
-    );
-  }
-
-  Widget _buildPlaceholderArt() {
-    return Container(
-      width: 250,
-      height: 250,
-      color: Colors.grey[300],
-      child: const Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.music_note,
-            size: 80,
-            color: Colors.grey,
-          ),
-          Text(
-            'No Album Art',
-            style: TextStyle(color: Colors.grey),
-          ),
-        ],
-      ),
     );
   }
 }

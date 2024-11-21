@@ -19,6 +19,8 @@ class _HomePageState extends State<HomePage> {
   final user = FirebaseAuth.instance.currentUser!;
   late final PlaylistProvider playlistProvider;
   bool isLoading = true;
+  TextEditingController searchController = TextEditingController();
+  List<Song> filteredPlaylist = [];
 
   // sign user out method
   void signUserOut() {
@@ -35,7 +37,20 @@ class _HomePageState extends State<HomePage> {
   Future<void> _initializeMusic() async {
     setState(() => isLoading = true);
     await playlistProvider.initializePlaylist();
-    setState(() => isLoading = false);
+    setState(() {
+      isLoading = false;
+      filteredPlaylist = playlistProvider.playlist;
+    });
+  }
+
+  void _filterSongs(String query) {
+    setState(() {
+      filteredPlaylist = playlistProvider.playlist
+          .where((song) =>
+              song.songName.toLowerCase().contains(query.toLowerCase()) ||
+              song.artistName.toLowerCase().contains(query.toLowerCase()))
+          .toList();
+    });
   }
 
   void goToSong(int songIndex) {
@@ -88,6 +103,58 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  // New method to show search bottom sheet
+  void _showSearchBottomSheet() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => Padding(
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(context).viewInsets.bottom,
+          left: 16,
+          right: 16,
+          top: 16,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: searchController,
+              decoration: InputDecoration(
+                hintText: 'Search songs...',
+                prefixIcon: const Icon(Icons.search),
+                suffixIcon: searchController.text.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(Icons.clear),
+                        onPressed: () {
+                          searchController.clear();
+                          _filterSongs('');
+                        },
+                      )
+                    : null,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+              onChanged: _filterSongs,
+              autofocus: true,
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pop(context);
+              },
+              child: const Text('Close'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -95,12 +162,16 @@ class _HomePageState extends State<HomePage> {
       appBar: AppBar(
         title: const Text("P L A Y L I S T"),
         actions: [
-          // Playlist button
+          // Search button added here
+          IconButton(
+            icon: const Icon(Icons.search),
+            onPressed: _showSearchBottomSheet,
+          ),
+          // Existing Playlist and Refresh buttons
           IconButton(
             icon: const Icon(Icons.playlist_add),
             onPressed: goToPlaylist,
           ),
-          // Refresh button
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: _initializeMusic,
@@ -119,28 +190,28 @@ class _HomePageState extends State<HomePage> {
                   );
                 }
 
-                final List<Song> playlist = value.playlist;
-
-                if (playlist.isEmpty) {
+                if (filteredPlaylist.isEmpty) {
                   return Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         const Icon(
-                          Icons.music_off,
+                          Icons.search_off,
                           size: 64,
                           color: Colors.grey,
                         ),
                         const SizedBox(height: 16),
                         const Text(
-                          'No music files found',
+                          'No songs found',
                           style: TextStyle(fontSize: 18),
                         ),
                         const SizedBox(height: 8),
-                        ElevatedButton.icon(
-                          onPressed: _initializeMusic,
-                          icon: const Icon(Icons.refresh),
-                          label: const Text('Scan for Music'),
+                        ElevatedButton(
+                          onPressed: () {
+                            searchController.clear();
+                            _filterSongs('');
+                          },
+                          child: const Text('Reset Search'),
                         ),
                       ],
                     ),
@@ -148,9 +219,9 @@ class _HomePageState extends State<HomePage> {
                 }
 
                 return ListView.builder(
-                  itemCount: playlist.length,
+                  itemCount: filteredPlaylist.length,
                   itemBuilder: (context, index) {
-                    final Song song = playlist[index];
+                    final Song song = filteredPlaylist[index];
 
                     return ListTile(
                       title: Text(
@@ -164,7 +235,8 @@ class _HomePageState extends State<HomePage> {
                         overflow: TextOverflow.ellipsis,
                       ),
                       leading: _buildAlbumArt(song),
-                      onTap: () => goToSong(index),
+                      onTap: () =>
+                          goToSong(playlistProvider.playlist.indexOf(song)),
                       trailing: PopupMenuButton(
                         itemBuilder: (context) => [
                           const PopupMenuItem(
@@ -200,7 +272,7 @@ class _HomePageState extends State<HomePage> {
                         ],
                         onSelected: (value) {
                           if (value == 'play') {
-                            goToSong(index);
+                            goToSong(playlistProvider.playlist.indexOf(song));
                           } else if (value == 'details') {
                             _showSongDetails(context, song);
                           } else if (value == 'add_to_playlist') {

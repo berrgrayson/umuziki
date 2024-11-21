@@ -49,25 +49,59 @@ class PlaylistProvider extends ChangeNotifier {
     listenToDuration();
     initializePlaylist();
     _initializeDatabase();
-    _loadPlaylists();
   }
 
   Future<void> _initializeDatabase() async {
     final directory = await getApplicationDocumentsDirectory();
     _database = await openDatabase(
-      '${directory.path}/playlists.db',
-      version: 1,
-      onCreate: (db, version) {
-        return db.execute(
-          '''
-          CREATE TABLE playlists (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT
-          )
-        ''',
-        );
-      },
+      '${directory.path}/music_database.db',
+      version: 2,
+      onCreate: _createDatabase,
+      onUpgrade: _upgradeDatabase,
     );
+    await _loadAllData();
+  }
+
+  Future<void> _createDatabase(Database db, int version) async {
+    await db.execute('''
+      CREATE TABLE playlists (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT
+      )
+    ''');
+    await db.execute('''
+      CREATE TABLE playlist_songs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        playlist_id INTEGER,
+        song_path TEXT,
+        song_name TEXT,
+        artist_name TEXT,
+        album_art_path TEXT,
+        FOREIGN KEY (playlist_id) REFERENCES playlists (id) ON DELETE CASCADE
+      )
+    ''');
+  }
+
+  Future<void> _upgradeDatabase(
+      Database db, int oldVersion, int newVersion) async {
+    if (oldVersion < 2) {
+      await db.execute('''
+        CREATE TABLE playlist_songs (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          playlist_id INTEGER,
+          song_path TEXT,
+          song_name TEXT,
+          artist_name TEXT,
+          album_art_path TEXT,
+          FOREIGN KEY (playlist_id) REFERENCES playlists (id) ON DELETE CASCADE
+        )
+      ''');
+    }
+  }
+
+  Future<void> _loadAllData() async {
+    await _loadPlaylists();
+    await scanDeviceMusic();
   }
 
   Future<void> _loadPlaylists() async {
@@ -79,7 +113,8 @@ class PlaylistProvider extends ChangeNotifier {
     for (final row in playlistsData) {
       final playlistId = row['id'] as int;
       final playlistName = row['name'] as String;
-      final playlistSongs = await _getSongsForPlaylist(playlistId);
+      final playlistSongs = await _loadSongsForPlaylist(playlistId);
+
       _playlists.add(
           Playlist(id: playlistId, name: playlistName, songs: playlistSongs));
     }
@@ -87,49 +122,84 @@ class PlaylistProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<List<Song>> _getSongsForPlaylist(int playlistId) async {
-    final songsList = <Song>[];
-    for (final song in _playlist) {
-      if (song.playlistId == playlistId) {
-        songsList.add(song);
-      }
-    }
-    return songsList;
+  Future<List<Song>> _loadSongsForPlaylist(int playlistId) async {
+    if (_database == null) return [];
+
+    final songsData = await _database!.query('playlist_songs',
+        where: 'playlist_id = ?', whereArgs: [playlistId]);
+
+    return songsData.map((songRow) {
+      final audioFile = File(songRow['song_path'] as String);
+      return Song(
+        songName: songRow['song_name'] as String,
+        artistName: songRow['artist_name'] as String,
+        albumArtImagePath: songRow['album_art_path'] as String?,
+        audioPath: songRow['song_path'] as String,
+        audioFile: audioFile,
+        playlistId: playlistId,
+      );
+    }).toList();
   }
 
   Future<void> createPlaylist(String name) async {
     if (_database == null) return;
 
     final playlistId = await _database!.insert('playlists', {'name': name});
-    _playlists.add(Playlist(id: playlistId, name: name, songs: []));
+    final newPlaylist = Playlist(id: playlistId, name: name, songs: []);
+    _playlists.add(newPlaylist);
     notifyListeners();
   }
 
-  void deletePlaylist(Playlist playlist) async {
+  Future<void> deletePlaylist(Playlist playlist) async {
     if (_database == null) return;
 
+    // Delete songs in the playlist first
+    await _database!.delete('playlist_songs',
+        where: 'playlist_id = ?', whereArgs: [playlist.id]);
+
+    // Then delete the playlist
     await _database!
         .delete('playlists', where: 'id = ?', whereArgs: [playlist.id]);
+
     _playlists.remove(playlist);
     notifyListeners();
   }
 
-  void updatePlaylistName(Playlist playlist, String newName) async {
+  Future<void> updatePlaylistName(Playlist playlist, String newName) async {
     if (_database == null) return;
 
     await _database!.update('playlists', {'name': newName},
         where: 'id = ?', whereArgs: [playlist.id]);
+
     playlist.name = newName;
     notifyListeners();
   }
 
-  void addSongToPlaylist(Playlist playlist, Song song) {
+  Future<void> addSongToPlaylist(Playlist playlist, Song song) async {
+    if (_database == null) return;
+
+    // Insert song into playlist_songs table
+    await _database!.insert('playlist_songs', {
+      'playlist_id': playlist.id,
+      'song_path': song.audioPath,
+      'song_name': song.songName,
+      'artist_name': song.artistName,
+      'album_art_path': song.albumArtImagePath,
+    });
+
     song.playlistId = playlist.id;
     playlist.songs.add(song);
     notifyListeners();
   }
 
-  void removeSongFromPlaylist(Playlist playlist, Song song) {
+  Future<void> removeSongFromPlaylist(Playlist playlist, Song song) async {
+    if (_database == null) return;
+
+    // Remove song from playlist_songs table
+    await _database!.delete('playlist_songs',
+        where: 'playlist_id = ? AND song_path = ?',
+        whereArgs: [playlist.id, song.audioPath]);
+
     song.playlistId = null;
     playlist.songs.remove(song);
     notifyListeners();
@@ -144,62 +214,81 @@ class PlaylistProvider extends ChangeNotifier {
   Future<void> scanDeviceMusic() async {
     try {
       List<Directory> musicDirs = [];
-
       if (Platform.isAndroid) {
-        // Get the external storage directory
-        List<Directory>? extDirs = await getExternalStorageDirectories();
+        // Add multiple common music directories
+        final List<String> commonMusicPaths = [
+          '/storage/emulated/0/Music',
+          '/storage/emulated/0/Download',
+          '/storage/emulated/0/Songs',
+          '/storage/emulated/0/Xender',
+          '/storage/emulated/0/',
+          '/storage/external_primary/'
+        ];
+
+        // Get external storage directories
+        List<Directory>? extDirs = await getExternalStorageDirectories(
+          type: StorageDirectory.music,
+        );
+
         if (extDirs != null) {
           for (var dir in extDirs) {
-            // Navigate up to the root of external storage
-            String path = dir.path;
-            final List<String> paths = path.split("/");
-            int androidIndex = paths.indexOf("Android");
-            if (androidIndex != -1) {
-              path = paths.sublist(0, androidIndex).join("/");
-              // Add common music directories
-              final musicDir = Directory('$path/Music');
-              if (await musicDir.exists()) musicDirs.add(musicDir);
-            }
+            musicDirs.add(dir);
           }
         }
-      } else if (Platform.isIOS) {
-        // For iOS, we'll use the documents directory as a base
-        final Directory docDir = await getApplicationDocumentsDirectory();
-        musicDirs.add(docDir);
+
+        // Add common music paths that might exist
+        for (String path in commonMusicPaths) {
+          final musicDir = Directory(path);
+          if (await musicDir.exists()) {
+            musicDirs.add(musicDir);
+          }
+        }
       }
 
       // Clear existing playlist
       _playlist.clear();
 
-      // Scan directories for music files
+      // Scan directories for music files with improved error handling
       for (Directory dir in musicDirs) {
-        await for (FileSystemEntity entity in dir.list(recursive: true)) {
-          if (entity is File) {
-            String extension = entity.path.toLowerCase().split('.').last;
-            if (['mp3', 'm4a', 'aac', 'wav'].contains(extension)) {
-              try {
-                String fileName = entity.path.split('/').last;
-                String songName = fileName.split('.').first;
+        try {
+          await for (FileSystemEntity entity in dir.list(recursive: true)) {
+            if (entity is File) {
+              String extension = entity.path.toLowerCase().split('.').last;
+              if (['mp3', 'm4a', 'aac', 'wav', 'flac', 'ogg']
+                  .contains(extension)) {
+                try {
+                  String fileName = entity.path.split('/').last;
+                  String songName = fileName.split('.').first;
 
-                // Create song without metadata
-                _playlist.add(Song(
-                  songName: songName,
-                  artistName: 'Unknown Artist',
-                  albumArtImagePath: null,
-                  audioPath: entity.path,
-                  audioFile: entity,
-                ));
-              } catch (e) {
-                print('Error processing file ${entity.path}: $e');
+                  // Optional: Add file size check to filter out very small files
+                  int fileSize = await entity.length();
+                  if (fileSize > 1024 * 100) {
+                    // Minimum 100KB
+                    _playlist.add(Song(
+                      songName: songName,
+                      artistName: 'Unknown Artist',
+                      albumArtImagePath: null,
+                      audioPath: entity.path,
+                      audioFile: entity,
+                    ));
+                  }
+                } catch (e) {
+                  print('Error processing individual file ${entity.path}: $e');
+                }
               }
             }
           }
+        } catch (dirScanError) {
+          print('Error scanning directory ${dir.path}: $dirScanError');
         }
       }
 
+      // Optional: Add logging for debugging
+      print('Total songs found: ${_playlist.length}');
+
       notifyListeners();
     } catch (e) {
-      print('Error scanning music: $e');
+      print('Critical error scanning music: $e');
     }
   }
 
