@@ -34,7 +34,7 @@ Follow these steps to set up and run **Umuziki** on your local machine:
 
 1. **Clone the repository**  
    ```bash
-   git clone https://github.com/yourusername/umuziki.git
+   git clone https://github.com/berrgrayson/umuziki.git
    cd umuziki
    ```
 
