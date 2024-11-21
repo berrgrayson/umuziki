@@ -1,6 +1,5 @@
-// main.dart (authentification app)
-import 'package:authentification/pages/auth_page.dart';
 import 'package:authentification/models/playlist_provider.dart';
+import 'package:authentification/pages/splash_screen.dart';
 import 'package:authentification/theme/theme_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -30,7 +29,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      home: const AuthPage(),
+      home: const SplashScreen(),
       theme: Provider.of<ThemeProvider>(context).themeData,
     );
   }

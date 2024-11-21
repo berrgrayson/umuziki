@@ -2,6 +2,7 @@ import 'package:authentification/components/my_drawer.dart';
 import 'package:authentification/components/mini_player.dart';
 import 'package:authentification/models/playlist_provider.dart';
 import 'package:authentification/pages/song_page.dart';
+import 'package:authentification/pages/playlist_page.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -47,6 +48,15 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  void goToPlaylist() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const PlaylistPage(),
+      ),
+    );
+  }
+
   Widget _buildAlbumArt(Song song) {
     if (song.albumArtImagePath != null) {
       return ClipRRect(
@@ -85,6 +95,11 @@ class _HomePageState extends State<HomePage> {
       appBar: AppBar(
         title: const Text("P L A Y L I S T"),
         actions: [
+          // Playlist button
+          IconButton(
+            icon: const Icon(Icons.playlist_add),
+            onPressed: goToPlaylist,
+          ),
           // Refresh button
           IconButton(
             icon: const Icon(Icons.refresh),
@@ -172,12 +187,24 @@ class _HomePageState extends State<HomePage> {
                               ],
                             ),
                           ),
+                          const PopupMenuItem(
+                            value: 'add_to_playlist',
+                            child: Row(
+                              children: [
+                                Icon(Icons.playlist_add),
+                                SizedBox(width: 8),
+                                Text('Add to Playlist'),
+                              ],
+                            ),
+                          ),
                         ],
                         onSelected: (value) {
                           if (value == 'play') {
                             goToSong(index);
                           } else if (value == 'details') {
                             _showSongDetails(context, song);
+                          } else if (value == 'add_to_playlist') {
+                            _showAddToPlaylistDialog(context, song);
                           }
                         },
                       ),
@@ -233,6 +260,43 @@ class _HomePageState extends State<HomePage> {
               style: Theme.of(context).textTheme.bodySmall,
             ),
           ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showAddToPlaylistDialog(BuildContext context, Song song) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Add to Playlist'),
+        content: Consumer<PlaylistProvider>(
+          builder: (context, provider, child) {
+            final playlists = provider.playlists;
+            return Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                for (final playlist in playlists)
+                  CheckboxListTile(
+                    title: Text(playlist.name),
+                    value: playlist.songs.contains(song),
+                    onChanged: (value) {
+                      if (value!) {
+                        provider.addSongToPlaylist(playlist, song);
+                      } else {
+                        provider.removeSongFromPlaylist(playlist, song);
+                      }
+                    },
+                  ),
+              ],
+            );
+          },
         ),
         actions: [
           TextButton(

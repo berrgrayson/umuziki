@@ -16,6 +16,88 @@ class SongPage extends StatelessWidget {
     return formattedTime;
   }
 
+  void _showAddToPlaylistDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Add to Playlist'),
+        content: Consumer<PlaylistProvider>(
+          builder: (context, provider, child) {
+            final playlists = provider.playlists;
+            final currentSong = provider.currentSong;
+            if (currentSong == null) return const SizedBox.shrink();
+            return Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                for (final playlist in playlists)
+                  CheckboxListTile(
+                    title: Text(playlist.name),
+                    value: playlist.songs.contains(currentSong),
+                    onChanged: (value) {
+                      if (value!) {
+                        provider.addSongToPlaylist(playlist, currentSong);
+                      } else {
+                        provider.removeSongFromPlaylist(playlist, currentSong);
+                      }
+                    },
+                  ),
+              ],
+            );
+          },
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showCreatePlaylistDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        final newPlaylistNameController = TextEditingController();
+        final provider = Provider.of<PlaylistProvider>(context, listen: false);
+        final currentSong = provider.currentSong;
+        if (currentSong == null) {
+          return const AlertDialog(title: Text('No current song'));
+        }
+        return AlertDialog(
+          title: const Text('Create Playlist'),
+          content: TextField(
+            controller: newPlaylistNameController,
+            decoration: const InputDecoration(
+              hintText: 'Enter playlist name',
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                final newPlaylistName = newPlaylistNameController.text.trim();
+                if (newPlaylistName.isNotEmpty) {
+                  provider.createPlaylist(newPlaylistName);
+                  provider.addSongToPlaylist(
+                    provider.playlists.last,
+                    currentSong,
+                  );
+                  Navigator.pop(context);
+                }
+              },
+              child: const Text('Create'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Consumer<PlaylistProvider>(
@@ -111,11 +193,23 @@ class SongPage extends StatelessWidget {
                                   ),
                                 ),
 
-                                // An icon for fun
-                                const Icon(
-                                  Icons.stars,
-                                  color: Colors.orangeAccent,
-                                )
+                                // Add to Playlist and Create Playlist icons
+                                Row(
+                                  children: [
+                                    IconButton(
+                                      onPressed: () =>
+                                          _showAddToPlaylistDialog(context),
+                                      icon: const Icon(Icons.save_rounded),
+                                      color: Colors.green,
+                                    ),
+                                    IconButton(
+                                      onPressed: () =>
+                                          _showCreatePlaylistDialog(context),
+                                      icon: const Icon(Icons.playlist_add),
+                                      color: Colors.green.shade500,
+                                    ),
+                                  ],
+                                ),
                               ],
                             ),
                           ),
@@ -134,8 +228,18 @@ class SongPage extends StatelessWidget {
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               Text(formatTime(value.currentDuration)),
-                              const Icon(Icons.shuffle),
-                              const Icon(Icons.repeat),
+                              const Icon(
+                                Icons.multitrack_audio_sharp,
+                                color: Colors.cyan,
+                              ),
+                              const Icon(
+                                Icons.sports_basketball,
+                                color: Colors.cyan,
+                              ),
+                              const Icon(
+                                Icons.multitrack_audio_sharp,
+                                color: Colors.cyan,
+                              ),
                               Text(formatTime(value.totalDuration)),
                             ],
                           ),
@@ -158,45 +262,45 @@ class SongPage extends StatelessWidget {
                             },
                           ),
                         ),
+
+                        const SizedBox(height: 25),
+
+                        // playback controls
+                        Row(
+                          children: [
+                            Expanded(
+                              child: GestureDetector(
+                                onTap: value.playPreviousSong,
+                                child: const NeuBox(
+                                  child: Icon(Icons.skip_previous),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 20),
+                            Expanded(
+                              flex: 2,
+                              child: GestureDetector(
+                                onTap: value.pauseOrResume,
+                                child: NeuBox(
+                                  child: Icon(value.isPlaying
+                                      ? Icons.pause
+                                      : Icons.play_arrow),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 20),
+                            Expanded(
+                              child: GestureDetector(
+                                onTap: value.playNextSong,
+                                child: const NeuBox(
+                                  child: Icon(Icons.skip_next),
+                                ),
+                              ),
+                            ),
+                          ],
+                        )
                       ],
                     ),
-
-                    const SizedBox(height: 25),
-
-                    // playback controls
-                    Row(
-                      children: [
-                        Expanded(
-                          child: GestureDetector(
-                            onTap: value.playPreviousSong,
-                            child: const NeuBox(
-                              child: Icon(Icons.skip_previous),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 20),
-                        Expanded(
-                          flex: 2,
-                          child: GestureDetector(
-                            onTap: value.pauseOrResume,
-                            child: NeuBox(
-                              child: Icon(value.isPlaying
-                                  ? Icons.pause
-                                  : Icons.play_arrow),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 20),
-                        Expanded(
-                          child: GestureDetector(
-                            onTap: value.playNextSong,
-                            child: const NeuBox(
-                              child: Icon(Icons.skip_next),
-                            ),
-                          ),
-                        ),
-                      ],
-                    )
                   ],
                 ),
               ),
